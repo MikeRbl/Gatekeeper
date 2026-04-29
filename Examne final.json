@@ -1,0 +1,237 @@
+{
+  "name": "Examne final",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "Safebox-solicitud",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "de14ee51-b8a8-4a69-a099-5a0a03870727",
+      "name": "Webhook",
+      "webhookId": "c898f16b-3882-429b-812f-0861d26608cd"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM pagos_referencia\nWHERE upper(folio) = upper('{{ $json.body.folio }}') AND valido = true;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        208,
+        0
+      ],
+      "id": "e6ff6b51-00d2-4482-885c-7306bf306087",
+      "name": "Execute a SQL query",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "iFA4py93KgwhngQP",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ce64dff6-028a-46fd-a924-04da360bfdf3",
+              "leftValue": "={{ $json.folio }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "948085ee-81f7-48f9-8633-a19a9c04bd6c",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "http://host.docker.internal:4000/api/callback/",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"email\": \"{{ $('Webhook').first().json.body.email }}\",\n  \"estatus\": \"Aceptado\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "8d8bd4dc-b2af-425f-94d4-79d815fd95d3",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "http://host.docker.internal:4000/api/callback/",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"email\": \"{{ $('Webhook').first().json.body.email }}\",\n  \"estatus\": \"Rechazado\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        624,
+        160
+      ],
+      "id": "e6051dee-5164-4b4d-bb0f-04df10f969ed",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Webhook').item.json.body.email }}",
+        "subject": "Hola desde Gatekeeper",
+        "message": "=<div style=\"font-family: sans-serif; border: 1px solid #e0e0e0; padding: 20px; border-radius: 10px; max-width: 500px;\">     <h2 style=\"color: #2e7d32;\">¡Validación Exitosa!</h2>     <p>Hola,</p>     <p>Te informamos que tu <strong>folio de pago: {{ $json.body.folio }}</strong> ha sido verificado correctamente en nuestro sistema.</p>          <div style=\"background-color: #f1f8e9; padding: 15px; border-left: 5px solid #4caf50; margin: 20px 0;\">         <p style=\"margin: 0;\"><strong>Estatus:</strong> Aceptado</p>         <p style=\"margin: 5px 0 0 0;\"><strong>Usuario:</strong> {{ $json.body.email }}</p>     </div>      <p>Ya puedes visualizar tu <strong>Gafete Digital</strong> y acceder al <strong>Link de Descarga</strong> directamente en la plataforma.</p>          <a href=\"URL_DE_TU_APP\" style=\"display: inline-block; padding: 10px 20px; background-color: #2e7d32; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;\">Volver a la Plataforma</a>          <p style=\"font-size: 0.8em; color: #757575; margin-top: 30px;\">Este es un correo automático generado por el Gatekeeper System.</p> </div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        832,
+        -96
+      ],
+      "id": "c8dcf924-6998-4530-bee0-3dcd38edc193",
+      "name": "Send a message",
+      "webhookId": "d539ef21-5e27-4158-aa75-6e5fa222571e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Rg057UMPZwMZjlW6",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Webhook').item.json.body.email }}",
+        "subject": "Le tenemos malas noticias desde SafeBox",
+        "message": "=<div style=\"font-family: sans-serif; border: 1px solid #f5c2c7; padding: 20px; border-radius: 10px; max-width: 500px;\">     <h2 style=\"color: #d32f2f;\">Acceso Denegado</h2>     <p>Hola,</p>     <p>Lamentamos informarte que no pudimos validar el <strong>folio: {{ $json.body.folio }}</strong> que proporcionaste.</p>          <p>Esto puede deberse a que el folio no existe en nuestra base de datos de pagos verificados o ya ha sido utilizado anteriormente.</p>      <div style=\"background-color: #fff8f8; padding: 15px; border-left: 5px solid #f44336; margin: 20px 0;\">         <p style=\"margin: 0;\"><strong>Recomendación:</strong> Por favor, verifica que el folio esté escrito correctamente (respetando mayúsculas) e inténtalo de nuevo.</p>     </div>      <p>Si consideras que esto es un error, por favor contacta al administrador del sistema.</p>          <p style=\"font-size: 0.8em; color: #757575; margin-top: 30px;\">Gatekeeper System \n Ingeniería en Sistemas Computacionales</p> </div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        816,
+        160
+      ],
+      "id": "9735a529-9ff6-4eea-ace2-fe8786e34d90",
+      "name": "Send a message1",
+      "webhookId": "d539ef21-5e27-4158-aa75-6e5fa222571e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Rg057UMPZwMZjlW6",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "fa4c9aff-84e0-454d-80dc-e5e609711101",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7bff5451f7314abb0bd105208acfd9afee03c7b1f019e7090a64b1a3f451111f"
+  },
+  "id": "8KANJr6FmcTuFAaG",
+  "tags": []
+}
