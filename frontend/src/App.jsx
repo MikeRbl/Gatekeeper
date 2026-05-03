@@ -37,7 +37,11 @@ function App() {
     if (estatus === 'Procesando') {
       intervalId = setInterval(async () => {
         try {
-          const response = await fetch(`http://localhost:4000/api/verificar-estatus/${email}`);
+          // LA SOLUCIÓN AL CACHÉ (PASO 2):
+          // Agregamos { cache: 'no-store' } para que el navegador no recicle respuestas viejas
+          const response = await fetch(`http://localhost:4000/api/verificar-estatus/${email}`, {
+            cache: 'no-store' 
+          });
           
           if (response.ok) {
             const data = await response.json();
